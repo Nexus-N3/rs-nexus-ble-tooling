@@ -15,6 +15,8 @@ NEXUS_N3_DOT_SET_ODR_HEX = {
 NEXUS_N3_DOT_START_HEX = "01"
 NEXUS_N3_DOT_STOP_HEX = "02"
 NEXUS_N3_DOT_PACKET = struct.Struct("<BBHIhhhhhh")
+NEXUS_N3_DOT_DEVICE_STATUS_V1 = struct.Struct("<B H I I")
+NEXUS_N3_DOT_DEVICE_STATUS_V2 = struct.Struct("<B H I I I I")
 DEFAULT_STARTUP_GATE = {
     "enabled": True,
     "stability_window_seconds": 5.0,
@@ -54,3 +56,34 @@ def select_addresses(matches, count: int) -> list[str]:
     if len(matches) < count:
         raise RuntimeError(f"Requested {count} Nexus N3 Dot sensors, found {len(matches)}")
     return [entry.address for entry in matches[:count]]
+
+
+def parse_device_status(payload: bytes) -> dict[str, int]:
+    if len(payload) == NEXUS_N3_DOT_DEVICE_STATUS_V2.size:
+        running, odr_hz, packets_sent, packets_dropped, imu_read_failures, notify_failures = (
+            NEXUS_N3_DOT_DEVICE_STATUS_V2.unpack(payload)
+        )
+        return {
+            "running": int(running),
+            "odr_hz": int(odr_hz),
+            "packets_sent": int(packets_sent),
+            "packets_dropped": int(packets_dropped),
+            "imu_read_failures": int(imu_read_failures),
+            "notify_failures": int(notify_failures),
+        }
+
+    if len(payload) == NEXUS_N3_DOT_DEVICE_STATUS_V1.size:
+        running, odr_hz, packets_sent, packets_dropped = NEXUS_N3_DOT_DEVICE_STATUS_V1.unpack(payload)
+        return {
+            "running": int(running),
+            "odr_hz": int(odr_hz),
+            "packets_sent": int(packets_sent),
+            "packets_dropped": int(packets_dropped),
+            "imu_read_failures": -1,
+            "notify_failures": -1,
+        }
+
+    raise ValueError(
+        "Nexus N3 Dot device status wrong size: "
+        f"expected {NEXUS_N3_DOT_DEVICE_STATUS_V1.size} or {NEXUS_N3_DOT_DEVICE_STATUS_V2.size}, got {len(payload)}"
+    )

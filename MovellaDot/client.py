@@ -37,26 +37,45 @@ class MovellaDotClient:
         write_timeout_s: float,
         without_response: bool,
     ):
+        effective_subscribe_timeout_s = max(
+            subscribe_timeout_s,
+            min(20.0, 6.0 + (len(self.connections) * 1.5)),
+        )
+
         for connection in self.connections:
             print(f"CONFIG {connection.address}: pre-stop")
-            self.gateway.write_gatt(
-                connection.address,
-                MOVELLA_START_STOP_STREAM_UUID,
-                MOVELLA_STOP_HEX,
-                timeout_s=write_timeout_s,
-                without_response=True,
-            )
-            time.sleep(0.25)
+            self.gateway.assert_connected(connection.address, action="pre-stop")
+            try:
+                self.gateway.write_gatt(
+                    connection.address,
+                    MOVELLA_START_STOP_STREAM_UUID,
+                    MOVELLA_STOP_HEX,
+                    timeout_s=write_timeout_s,
+                    without_response=True,
+                )
+                time.sleep(0.25)
+            except Exception as exc:
+                if self.gateway.is_disconnected(connection.address):
+                    raise RuntimeError(
+                        f"sensor disconnected before pre-stop complete address={connection.address}: {exc}"
+                    ) from exc
+                if "gatt_write_failed (-3)" in str(exc):
+                    raise RuntimeError(
+                        f"gateway lost connection before configure for address={connection.address}: {exc}"
+                    ) from exc
+                print(f"PRE-STOP WARNING: {connection.address}: {exc}")
 
+        for connection in self.connections:
             print(f"CONFIG {connection.address}: subscribe")
-            self.gateway.subscribe(
+            self.gateway.subscribe_with_retry(
                 connection.address,
                 MOVELLA_LONG_PAYLOAD_UUID,
-                timeout_s=subscribe_timeout_s,
+                effective_subscribe_timeout_s,
                 binary_notifications=True,
             )
             time.sleep(0.75)
 
+        for connection in self.connections:
             print(f"CONFIG {connection.address}: set-rate {sampling_rate_hz}Hz")
             self.gateway.write_gatt(
                 connection.address,
@@ -85,7 +104,7 @@ class MovellaDotClient:
         print("Stopping stream now.")
         for connection in self.connections:
             print(f"STOP STREAM: {connection.address}")
-            self.gateway.write_gatt(
+            write_complete_time = self.gateway.write_gatt(
                 connection.address,
                 MOVELLA_START_STOP_STREAM_UUID,
                 MOVELLA_STOP_HEX,
@@ -93,7 +112,11 @@ class MovellaDotClient:
                 without_response=without_response,
                 allow_timeout=True,
             )
-            print(f"STOP STREAM COMPLETE: {connection.address}")
+            if write_complete_time is None:
+                print(f"STOP STREAM WARNING: {connection.address}: timed out waiting for write_complete")
+            else:
+                print(f"STOP STREAM COMPLETE: {connection.address}")
+            time.sleep(0.05)
 
     def disconnect_all(self, timeout_s: float):
         self.gateway.disconnect(

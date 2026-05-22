@@ -154,6 +154,46 @@ class GatewayClient:
         )
         self.wait_for_request(request_id, "subscribe_complete", timeout_s)
 
+    def subscribe_with_retry(
+        self,
+        address: str,
+        characteristic_uuid: str,
+        timeout_s: float,
+        *,
+        binary_notifications: bool = False,
+        attempts: int = 2,
+        retry_delay_s: float = 0.3,
+    ):
+        last_exc: Exception | None = None
+        for attempt in range(1, max(attempts, 1) + 1):
+            self.assert_connected(address, action="subscribe")
+            try:
+                self.subscribe(
+                    address,
+                    characteristic_uuid,
+                    timeout_s,
+                    binary_notifications=binary_notifications,
+                )
+                return
+            except Exception as exc:
+                last_exc = exc
+                if self.is_disconnected(address):
+                    raise RuntimeError(
+                        f"sensor disconnected before subscribe_complete address={address}: {exc}"
+                    ) from exc
+                if (
+                    "subscribe_failed (-3)" in str(exc)
+                    or "subscription_register_failed (-2)" in str(exc)
+                ):
+                    raise RuntimeError(
+                        f"gateway lost subscribe state for address={address}: {exc}"
+                    ) from exc
+                if attempt < max(attempts, 1):
+                    print(f"SUBSCRIBE WARNING: {address}: attempt={attempt} failed: {exc}")
+                    time.sleep(retry_delay_s)
+
+        raise RuntimeError(f"subscribe failed address={address} after retries: {last_exc}")
+
     def write_gatt(
         self,
         address: str,
@@ -183,6 +223,59 @@ class GatewayClient:
             if allow_timeout:
                 return None
             raise
+
+    def write_gatt_nowait(
+        self,
+        address: str,
+        characteristic_uuid: str,
+        payload_hex: str,
+        *,
+        without_response: bool = False,
+    ) -> float:
+        request_id = self.request_id("write")
+        self.send(
+            {
+                "type": "gatt_write",
+                "request_id": request_id,
+                "address": address,
+                "characteristic_uuid": characteristic_uuid,
+                "payload_hex": payload_hex,
+                "without_response": without_response,
+            }
+        )
+        return time.monotonic()
+
+    def read_gatt(
+        self,
+        address: str,
+        characteristic_uuid: str,
+        timeout_s: float,
+    ) -> bytes:
+        request_id = self.request_id("read")
+        self.send(
+            {
+                "type": "gatt_read",
+                "request_id": request_id,
+                "address": address,
+                "characteristic_uuid": characteristic_uuid,
+            }
+        )
+
+        deadline = time.time() + timeout_s
+        while time.time() < deadline:
+            msg = self.read_json(timeout_s=max(0.1, deadline - time.time()))
+            msg_type = msg.get("type")
+
+            if msg_type == "read_result" and msg.get("request_id") == request_id:
+                payload_hex = str(msg.get("payload_hex", ""))
+                return bytes.fromhex(payload_hex)
+
+            if msg_type == "error" and msg.get("request_id") == request_id:
+                raise RuntimeError(
+                    f"Gateway gatt_read failed: {msg.get('message')} ({msg.get('error_code')})"
+                )
+
+        raise TimeoutError(f"Timed out waiting for gatt_read on {address}")
 
     def disconnect(
         self,
@@ -215,7 +308,7 @@ class GatewayClient:
                 if address in pending:
                     pending.remove(address)
                     disconnected.append(address)
-                    self.disconnected_addresses.add(address)
+                    self.disconnected_addresses.add(self._normalize_address(address))
                 continue
 
             if msg_type == "error" and msg.get("request_id") == request_id:
@@ -273,6 +366,9 @@ class GatewayClient:
             msg = self.read_json(timeout_s=max(0.1, deadline - time.time()))
             msg_type = msg.get("type")
 
+            #if msg_type in {"write_complete", "error", "gatt_debug"}:
+            #    print(f"WAIT DEBUG request_id={request_id} saw={msg}")
+
             if msg_type == success_type and msg.get("request_id") == request_id:
                 return msg
 
@@ -282,7 +378,7 @@ class GatewayClient:
                 )
 
             if msg_type not in {"gatt_debug"}:
-                self.cached_json.append(msg)
+                continue
 
         raise TimeoutError(f"Timed out waiting for {success_type} request_id={request_id}")
 
@@ -401,7 +497,7 @@ class GatewayClient:
         if msg_type == "sensor_disconnected":
             address = msg.get("address")
             if address:
-                self.disconnected_addresses.add(address)
+                self.disconnected_addresses.add(self._normalize_address(address))
             self._log(
                 "SENSOR DISCONNECTED: "
                 f"{msg.get('address')} phase={self.phase} request_id={msg.get('request_id')} "
@@ -455,6 +551,13 @@ class GatewayClient:
 
     def _normalize_address(self, address: str | None) -> str:
         return "" if not address else address.strip().upper()
+
+    def is_disconnected(self, address: str) -> bool:
+        return self._normalize_address(address) in self.disconnected_addresses
+
+    def assert_connected(self, address: str, *, action: str):
+        if self.is_disconnected(address):
+            raise RuntimeError(f"cannot {action} disconnected sensor address={address}")
 
     def _log(self, message: str):
         if self.verbose:

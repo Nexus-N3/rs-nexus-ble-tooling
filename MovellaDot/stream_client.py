@@ -144,6 +144,7 @@ def run(args) -> int:
             )
             for address, command_time in started_at.items():
                 monitor.mark_stream_started(address, command_time)
+            monitor.announce_startup_state()
 
             client.phase = "monitor"
             startup_deadline = time.monotonic() + args.startup_stability_window_seconds
@@ -177,6 +178,9 @@ def run(args) -> int:
                 write_timeout_s=args.write_timeout_s,
                 without_response=args.without_response,
             )
+
+            client.phase = "post_stop_drain"
+            monitor.drain_after_stop(client)
 
             try:
                 client.phase = "get_status"

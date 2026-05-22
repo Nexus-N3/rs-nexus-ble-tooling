@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
+import time
 from typing import Callable
 
 from .models import SensorConnection, StreamFrame
@@ -211,6 +212,9 @@ class GenericStreamMonitor:
         self.stream_frames_seen = 0
         self.stream_frames_unknown_sensor_id = 0
         self.unknown_sensor_ids: Counter[int] = Counter()
+        self.post_stop_drain_frames = 0
+        self.post_stop_drain_unknown_sensor_ids: Counter[int] = Counter()
+        self.post_stop_drain_by_address: Counter[str] = Counter()
         self.address_by_sensor_id: dict[int, str] = {}
         self.stats_by_address: dict[str, SensorStreamStats] = {}
 
@@ -224,12 +228,14 @@ class GenericStreamMonitor:
                 expected_rate_hz=expected_rate_hz,
             )
 
+    def announce_startup_state(self):
         if self.startup_gate.enabled:
             self._log(
                 "Waiting for startup stability gate: "
                 f"up to {self.startup_gate.stability_window_seconds:.1f}s."
             )
         else:
+            self.measurement_active = True
             self._log("Startup gate disabled. Official measurement is active immediately.")
 
     def mark_stream_started(self, address: str, command_time: float | None):
@@ -256,6 +262,43 @@ class GenericStreamMonitor:
             stable, _ = self.evaluate_startup_stability()
             if stable:
                 self.activate_measurement()
+
+    def drain_after_stop(self, gateway_client, *, quiet_window_s: float = 0.35, max_drain_s: float = 2.0):
+        self._log(
+            "Draining post-stop stream tail: "
+            f"quiet_window={quiet_window_s:.2f}s max_drain={max_drain_s:.2f}s."
+        )
+
+        drain_deadline = time.monotonic() + max_drain_s
+        quiet_deadline = time.monotonic() + quiet_window_s
+
+        while time.monotonic() < drain_deadline:
+            remaining_quiet = quiet_deadline - time.monotonic()
+            if remaining_quiet <= 0:
+                return
+
+            try:
+                item_type, item = gateway_client.read_item(timeout_s=max(0.01, min(0.1, remaining_quiet)))
+            except TimeoutError:
+                continue
+
+            if item_type == "stream_frame":
+                self.post_stop_drain_frames += 1
+                quiet_deadline = time.monotonic() + quiet_window_s
+                address = self.address_by_sensor_id.get(item.sensor_id)
+                if address is None:
+                    self.post_stop_drain_unknown_sensor_ids[item.sensor_id] += 1
+                else:
+                    self.post_stop_drain_by_address[address] += 1
+                self.handle_stream_frame(item, time.monotonic())
+                continue
+
+            if item.get("type") == "sensor_disconnected":
+                raise RuntimeError(
+                    f"Unexpected disconnect during post-stop drain: {item.get('address')} reason={item.get('reason')}"
+                )
+
+        self._log("Post-stop drain reached max_drain timeout.")
 
     def evaluate_startup_stability(self) -> tuple[bool, list[str]]:
         unstable: list[str] = []
@@ -293,7 +336,9 @@ class GenericStreamMonitor:
                 f"measurement_active={int(self.measurement_active)} "
                 f"stream_frames_seen={self.stream_frames_seen} "
                 f"unknown_sensor_id_frames={self.stream_frames_unknown_sensor_id} "
-                f"unknown_sensor_ids={dict(self.unknown_sensor_ids)}"
+                f"unknown_sensor_ids={dict(self.unknown_sensor_ids)} "
+                f"post_stop_drain_frames={self.post_stop_drain_frames} "
+                f"post_stop_drain_unknown_sensor_ids={dict(self.post_stop_drain_unknown_sensor_ids)}"
             ),
             (
                 "Host parser summary "

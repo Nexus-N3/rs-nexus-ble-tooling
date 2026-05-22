@@ -76,6 +76,7 @@ def build_parser():
 
 
 def run(args) -> int:
+    device_status_by_address: dict[str, dict[str, int]] = {}
     with open_gateway_serial(args.port) as ser:
         client = GatewayClient(ser, client_name="nexus_n3_dot_stream_client")
         nexus_n3_dot = NexusN3DotClient(client)
@@ -144,6 +145,7 @@ def run(args) -> int:
             )
             for address, command_time in started_at.items():
                 monitor.mark_stream_started(address, command_time)
+            monitor.announce_startup_state()
 
             client.phase = "monitor"
             startup_deadline = time.monotonic() + args.startup_stability_window_seconds
@@ -178,6 +180,15 @@ def run(args) -> int:
                 without_response=args.without_response,
             )
 
+            client.phase = "post_stop_drain"
+            monitor.drain_after_stop(client)
+
+            try:
+                client.phase = "read_device_status"
+                device_status_by_address = nexus_n3_dot.read_device_status_all(timeout_s=5.0)
+            except (TimeoutError, RuntimeError, ValueError) as exc:
+                print(f"DEVICE STATUS WARNING: {exc}")
+
             try:
                 client.phase = "get_status"
                 client.get_status_snapshot(timeout_s=10.0)
@@ -192,6 +203,17 @@ def run(args) -> int:
     print("")
     for line in monitor.summary_lines(client):
         print(line)
+    for address, status in sorted(device_status_by_address.items()):
+        print(
+            "Device status "
+            f"address={address} "
+            f"running={status.get('running')} "
+            f"odr_hz={status.get('odr_hz')} "
+            f"packets_sent={status.get('packets_sent')} "
+            f"packets_dropped={status.get('packets_dropped')} "
+            f"imu_read_failures={status.get('imu_read_failures')} "
+            f"notify_failures={status.get('notify_failures')}"
+        )
 
     return 0
 

@@ -6,11 +6,13 @@ from NexusBLESdk import GatewayClient, SensorConnection
 
 from .profile import (
     NEXUS_N3_DOT_CONTROL_COMMAND_UUID,
+    NEXUS_N3_DOT_DEVICE_STATUS_UUID,
     NEXUS_N3_DOT_IMU_MEASUREMENT_UUID,
     NEXUS_N3_DOT_NAME,
     NEXUS_N3_DOT_SET_ODR_HEX,
     NEXUS_N3_DOT_START_HEX,
     NEXUS_N3_DOT_STOP_HEX,
+    parse_device_status,
     select_addresses,
 )
 
@@ -36,35 +38,45 @@ class NexusN3DotClient:
         write_timeout_s: float,
         without_response: bool,
     ):
+        effective_subscribe_timeout_s = max(
+            subscribe_timeout_s,
+            min(20.0, 6.0 + (len(self.connections) * 1.5)),
+        )
+
         for connection in self.connections:
             print(f"CONFIG {connection.address}: pre-stop")
+            self.gateway.assert_connected(connection.address, action="pre-stop")
             self.gateway.write_gatt(
                 connection.address,
                 NEXUS_N3_DOT_CONTROL_COMMAND_UUID,
                 NEXUS_N3_DOT_STOP_HEX,
                 timeout_s=write_timeout_s,
-                without_response=True,
+                without_response=False,
             )
-            time.sleep(0.25)
+            time.sleep(0.5)
 
             print(f"CONFIG {connection.address}: subscribe")
-            self.gateway.subscribe(
+            self.gateway.subscribe_with_retry(
                 connection.address,
                 NEXUS_N3_DOT_IMU_MEASUREMENT_UUID,
-                timeout_s=subscribe_timeout_s,
+                effective_subscribe_timeout_s,
                 binary_notifications=True,
             )
             time.sleep(0.75)
 
-            print(f"CONFIG {connection.address}: set-rate {sampling_rate_hz}Hz")
+            payload_hex = NEXUS_N3_DOT_SET_ODR_HEX[sampling_rate_hz]
+            print(
+                f"CONFIG {connection.address}: set-rate {sampling_rate_hz}Hz "
+                f"payload={payload_hex} without_response={without_response}"
+            )
             self.gateway.write_gatt(
                 connection.address,
                 NEXUS_N3_DOT_CONTROL_COMMAND_UUID,
-                NEXUS_N3_DOT_SET_ODR_HEX[sampling_rate_hz],
+                payload_hex,
                 timeout_s=write_timeout_s,
                 without_response=without_response,
             )
-            time.sleep(0.25)
+            time.sleep(0.5)
 
     def start_streams(self, *, write_timeout_s: float, without_response: bool) -> dict[str, float | None]:
         started_at: dict[str, float | None] = {}
@@ -81,15 +93,13 @@ class NexusN3DotClient:
         print("Stopping stream now.")
         for connection in self.connections:
             print(f"STOP STREAM: {connection.address}")
-            self.gateway.write_gatt(
+            self._send_control_command(
                 connection.address,
-                NEXUS_N3_DOT_CONTROL_COMMAND_UUID,
                 NEXUS_N3_DOT_STOP_HEX,
-                timeout_s=write_timeout_s,
                 without_response=True,
-                allow_timeout=True,
             )
             print(f"STOP STREAM COMPLETE: {connection.address}")
+            time.sleep(0.05)
 
     def disconnect_all(self, timeout_s: float):
         self.gateway.disconnect(
@@ -98,16 +108,29 @@ class NexusN3DotClient:
             allow_timeout=True,
         )
 
+    def read_device_status_all(self, *, timeout_s: float = 5.0) -> dict[str, dict[str, int]]:
+        results: dict[str, dict[str, int]] = {}
+        for connection in self.connections:
+            payload = self.gateway.read_gatt(
+                connection.address,
+                NEXUS_N3_DOT_DEVICE_STATUS_UUID,
+                timeout_s=timeout_s,
+            )
+            results[connection.address] = parse_device_status(payload)
+        return results
+
     def _send_start_command(self, address: str, *, without_response: bool) -> float:
-        request_id = self.gateway.request_id("write")
-        self.gateway.send(
-            {
-                "type": "gatt_write",
-                "request_id": request_id,
-                "address": address,
-                "characteristic_uuid": NEXUS_N3_DOT_CONTROL_COMMAND_UUID,
-                "payload_hex": NEXUS_N3_DOT_START_HEX,
-                "without_response": without_response,
-            }
+        return self.gateway.write_gatt_nowait(
+            address,
+            NEXUS_N3_DOT_CONTROL_COMMAND_UUID,
+            NEXUS_N3_DOT_START_HEX,
+            without_response=without_response,
         )
-        return time.monotonic()
+
+    def _send_control_command(self, address: str, payload_hex: str, *, without_response: bool) -> float:
+        return self.gateway.write_gatt_nowait(
+            address,
+            NEXUS_N3_DOT_CONTROL_COMMAND_UUID,
+            payload_hex,
+            without_response=without_response,
+        )
