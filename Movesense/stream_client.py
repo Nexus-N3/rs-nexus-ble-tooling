@@ -10,10 +10,12 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from NexusBLESdk import (
+    CsvRowWriter,
     DEFAULT_PORT,
     GatewayClient,
     GenericStreamMonitor,
     StartupGateConfig,
+    build_output_path,
     open_gateway_serial,
 )
 
@@ -44,6 +46,11 @@ def build_parser():
         type=int,
         choices=sorted(MOVESENSE_SAMPLING_RATES_HZ),
         default=MOVESENSE_SAMPLING_RATES_HZ[0],
+    )
+    parser.add_argument(
+        "--ecg-path-suffix",
+        default="mv",
+        help='Optional ECG path suffix. Use "" for /Meas/ECG/<rate>, or mV for /Meas/ECG/<rate>/mV.',
     )
     parser.add_argument("--use-startup-gate", dest="use_startup_gate", action="store_true")
     parser.add_argument("--no-startup-gate", dest="use_startup_gate", action="store_false")
@@ -80,6 +87,11 @@ def build_parser():
     )
     parser.add_argument("--without-response", action="store_true")
     parser.add_argument(
+        "--write-to-file",
+        action="store_true",
+        help="Write parsed Movesense stream values to output-files/ in the current working directory.",
+    )
+    parser.add_argument(
         "--dump-raw-file",
         help="Optional JSONL file for raw Movesense packet capture.",
     )
@@ -90,10 +102,31 @@ def run(args) -> int:
     with open_gateway_serial(args.port) as ser:
         client = GatewayClient(ser, client_name="movesense_stream_client")
         movesense = MovesenseClient(client)
+        movesense.set_ecg_path_suffix(args.ecg_path_suffix)
         raw_dump_file = None
+        parsed_row_writer = None
+        parsed_output_path = None
         if args.dump_raw_file:
             raw_dump_file = open(args.dump_raw_file, "w", encoding="utf-8")
             movesense.set_raw_dump_file(raw_dump_file)
+        if args.write_to_file:
+            parsed_output_path = build_output_path("movesense_stream", "csv")
+            parsed_row_writer = CsvRowWriter(
+                parsed_output_path,
+                [
+                    "address",
+                    "sensor_id",
+                    "stream",
+                    "timestamp_ms",
+                    "gateway_timestamp_us",
+                    "packet_timestamp_ms",
+                    "sample_index",
+                    "sampling_rate_hz",
+                    "value",
+                    "unit",
+                ],
+            )
+            movesense.set_parsed_row_writer(parsed_row_writer)
         client.phase = "reset_session"
         client.reset_session()
         client.phase = "hello"
@@ -218,8 +251,12 @@ def run(args) -> int:
             client.phase = "idle"
             if raw_dump_file is not None:
                 raw_dump_file.close()
+            if parsed_row_writer is not None:
+                parsed_row_writer.close()
 
     print("")
+    if parsed_output_path is not None:
+        print(f"Parsed output file: {parsed_output_path}")
     for line in monitor.summary_lines(client):
         print(line)
 

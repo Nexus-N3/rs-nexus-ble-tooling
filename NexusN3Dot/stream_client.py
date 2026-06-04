@@ -10,10 +10,12 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from NexusBLESdk import (
+    CsvRowWriter,
     DEFAULT_PORT,
     GatewayClient,
     GenericStreamMonitor,
     StartupGateConfig,
+    build_output_path,
     open_gateway_serial,
 )
 
@@ -72,6 +74,11 @@ def build_parser():
         default=DEFAULT_STARTUP_GATE["gap_grace_seconds"],
     )
     parser.add_argument("--without-response", action="store_true")
+    parser.add_argument(
+        "--write-to-file",
+        action="store_true",
+        help="Write parsed Nexus N3 Dot stream values to output-files/ in the current working directory.",
+    )
     return parser
 
 
@@ -80,6 +87,29 @@ def run(args) -> int:
     with open_gateway_serial(args.port) as ser:
         client = GatewayClient(ser, client_name="nexus_n3_dot_stream_client")
         nexus_n3_dot = NexusN3DotClient(client)
+        parsed_row_writer = None
+        parsed_output_path = None
+        if args.write_to_file:
+            parsed_output_path = build_output_path("nexus_n3_dot_stream", "csv")
+            parsed_row_writer = CsvRowWriter(
+                parsed_output_path,
+                [
+                    "address",
+                    "sensor_id",
+                    "gateway_timestamp_us",
+                    "version",
+                    "flags",
+                    "sequence",
+                    "timestamp_us",
+                    "accel_x_mg",
+                    "accel_y_mg",
+                    "accel_z_mg",
+                    "gyro_x_mdps",
+                    "gyro_y_mdps",
+                    "gyro_z_mdps",
+                ],
+            )
+            nexus_n3_dot.set_parsed_row_writer(parsed_row_writer)
         client.phase = "reset_session"
         client.reset_session()
         client.phase = "hello"
@@ -172,6 +202,10 @@ def run(args) -> int:
                         )
                     continue
 
+                nexus_n3_dot.handle_stream_frame(
+                    item,
+                    measurement_active=monitor.measurement_active,
+                )
                 monitor.handle_stream_frame(item, time.monotonic())
 
             client.phase = "stop_streams"
@@ -199,8 +233,12 @@ def run(args) -> int:
             nexus_n3_dot.disconnect_all(timeout_s=args.disconnect_timeout_s)
         finally:
             client.phase = "idle"
+            if parsed_row_writer is not None:
+                parsed_row_writer.close()
 
     print("")
+    if parsed_output_path is not None:
+        print(f"Parsed output file: {parsed_output_path}")
     for line in monitor.summary_lines(client):
         print(line)
     for address, status in sorted(device_status_by_address.items()):

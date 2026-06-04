@@ -17,6 +17,7 @@ from .profile import (
     MOVESENSE_WRITE_UUID,
     build_stop_command,
     build_subscribe_command,
+    iter_parsed_rows,
     parse_hr_value,
     summarize_payload,
     parse_temp_value,
@@ -29,7 +30,9 @@ class MovesenseClient:
         self.gateway = gateway
         self.connections: list[SensorConnection] = []
         self.sampling_rate_hz = MOVESENSE_SAMPLING_RATES_HZ[0]
+        self.ecg_path_suffix = "mv"
         self._raw_dump_file = None
+        self._parsed_row_writer = None
         self._active_stream_ids = (
             MOVESENSE_ECG_STREAM_ID,
             MOVESENSE_HR_STREAM_ID,
@@ -86,7 +89,7 @@ class MovesenseClient:
                 MOVESENSE_WRITE_UUID,
                 build_subscribe_command(
                     MOVESENSE_ECG_STREAM_ID,
-                    f"/Meas/ECG/{self.sampling_rate_hz}/mv",
+                    self._build_ecg_path(),
                 ),
                 timeout_s=write_timeout_s,
                 without_response=without_response,
@@ -140,6 +143,12 @@ class MovesenseClient:
     def set_raw_dump_file(self, raw_dump_file):
         self._raw_dump_file = raw_dump_file
 
+    def set_parsed_row_writer(self, parsed_row_writer):
+        self._parsed_row_writer = parsed_row_writer
+
+    def set_ecg_path_suffix(self, suffix: str):
+        self.ecg_path_suffix = suffix
+
     def handle_stream_frame(self, frame: StreamFrame, monitor, wall_time: float):
         payload = frame.payload
         if len(payload) < 2:
@@ -154,6 +163,11 @@ class MovesenseClient:
             wall_time=wall_time,
             address=address,
         )
+        if monitor.measurement_active:
+            self._write_parsed_rows(
+                frame=frame,
+                address=address,
+            )
 
         if packet_type == MOVESENSE_PACKET_TYPE_GET_RESPONSE:
             return
@@ -193,3 +207,21 @@ class MovesenseClient:
         entry.update(summarize_payload(frame.payload, self.sampling_rate_hz))
         self._raw_dump_file.write(json.dumps(entry, separators=(",", ":")) + "\n")
         self._raw_dump_file.flush()
+
+    def _write_parsed_rows(self, *, frame: StreamFrame, address: str | None):
+        if self._parsed_row_writer is None:
+            return
+        for row in iter_parsed_rows(
+            frame.payload,
+            sampling_rate_hz=self.sampling_rate_hz,
+            address=address,
+            sensor_id=frame.sensor_id,
+            gateway_timestamp_us=frame.gateway_timestamp_us,
+        ):
+            self._parsed_row_writer.write_row(row)
+
+    def _build_ecg_path(self) -> str:
+        suffix = self.ecg_path_suffix.strip()
+        if suffix:
+            return f"/Meas/ECG/{self.sampling_rate_hz}/{suffix}"
+        return f"/Meas/ECG/{self.sampling_rate_hz}"

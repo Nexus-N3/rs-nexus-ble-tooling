@@ -52,6 +52,40 @@ def parse_sensor_timestamp(payload: bytes) -> int:
     return int(timestamp_us)
 
 
+def parse_packet(payload: bytes) -> dict[str, int]:
+    if len(payload) != NEXUS_N3_DOT_PACKET.size:
+        raise ValueError(
+            f"Nexus N3 Dot payload wrong size: expected {NEXUS_N3_DOT_PACKET.size}, got {len(payload)}"
+        )
+
+    (
+        version,
+        flags,
+        sequence,
+        timestamp_us,
+        accel_x_mg,
+        accel_y_mg,
+        accel_z_mg,
+        gyro_x_mdps,
+        gyro_y_mdps,
+        gyro_z_mdps,
+    ) = NEXUS_N3_DOT_PACKET.unpack(payload)
+    if version != 1:
+        raise ValueError(f"Unsupported Nexus N3 Dot packet version: {version}")
+    return {
+        "version": int(version),
+        "flags": int(flags),
+        "sequence": int(sequence),
+        "timestamp_us": int(timestamp_us),
+        "accel_x_mg": int(accel_x_mg),
+        "accel_y_mg": int(accel_y_mg),
+        "accel_z_mg": int(accel_z_mg),
+        "gyro_x_mdps": int(gyro_x_mdps),
+        "gyro_y_mdps": int(gyro_y_mdps),
+        "gyro_z_mdps": int(gyro_z_mdps),
+    }
+
+
 def select_addresses(matches, count: int) -> list[str]:
     if len(matches) < count:
         raise RuntimeError(f"Requested {count} Nexus N3 Dot sensors, found {len(matches)}")

@@ -15,6 +15,7 @@ MOVESENSE_ECG_SAMPLES_PER_PACKET = 16
 MOVESENSE_PACKET_TYPE_GET_RESPONSE = 1
 MOVESENSE_PACKET_TYPE_DATA = 2
 MOVESENSE_MIN_PACKET_LEN = 6
+ECG_SAMPLE_SCALE_MV = 0.38147 * 0.001
 DEFAULT_STARTUP_GATE = {
     "enabled": True,
     "stability_window_seconds": 5.0,
@@ -48,6 +49,35 @@ def parse_ecg_packet_sample_count(payload: bytes) -> int:
     if payload_len <= 0:
         return 0
     return payload_len // 4
+
+
+def parse_ecg_sample_values_mv(payload: bytes) -> list[float]:
+    if len(payload) < MOVESENSE_MIN_PACKET_LEN or payload[0] != MOVESENSE_PACKET_TYPE_DATA:
+        return []
+
+    payload_len = len(payload) - 6
+    if payload_len <= 0:
+        return []
+
+    if payload_len == 64:
+        return [
+            struct.unpack("<i", payload[6 + index * 4:10 + index * 4])[0] * ECG_SAMPLE_SCALE_MV
+            for index in range(MOVESENSE_ECG_SAMPLES_PER_PACKET)
+        ]
+    if payload_len == 32:
+        return [
+            struct.unpack("<h", payload[6 + index * 2:8 + index * 2])[0] * ECG_SAMPLE_SCALE_MV
+            for index in range(MOVESENSE_ECG_SAMPLES_PER_PACKET)
+        ]
+
+    values: list[float] = []
+    sample_count = payload_len // 4
+    for index in range(sample_count):
+        offset = 6 + index * 4
+        if offset + 4 > len(payload):
+            break
+        values.append(struct.unpack("<i", payload[offset:offset + 4])[0] * ECG_SAMPLE_SCALE_MV)
+    return values
 
 
 def parse_hr_value(payload: bytes) -> float | None:
@@ -99,6 +129,7 @@ def summarize_payload(payload: bytes, sampling_rate_hz: int) -> dict:
                     "packet_timestamp_ms": int(struct.unpack_from("<I", payload, 2)[0]),
                     "packet_timestamp_us": parse_ecg_packet_timestamp_us(payload),
                     "ecg_sample_count": parse_ecg_packet_sample_count(payload),
+                    "ecg_values_mv": parse_ecg_sample_values_mv(payload),
                     "sample_timestamps_ms": sample_timestamps_ms,
                     "first_sample_timestamp_ms": sample_timestamps_ms[0] if sample_timestamps_ms else None,
                     "last_sample_timestamp_ms": sample_timestamps_ms[-1] if sample_timestamps_ms else None,
@@ -109,6 +140,81 @@ def summarize_payload(payload: bytes, sampling_rate_hz: int) -> dict:
         elif stream_id == MOVESENSE_TEMP_STREAM_ID:
             summary["temp_c"] = parse_temp_value(payload)
     return summary
+
+
+def iter_parsed_rows(
+    payload: bytes,
+    *,
+    sampling_rate_hz: int,
+    address: str | None,
+    sensor_id: int,
+    gateway_timestamp_us: int,
+) -> list[dict]:
+    if len(payload) < 2 or payload[0] != MOVESENSE_PACKET_TYPE_DATA:
+        return []
+
+    stream_id = payload[1]
+    if stream_id == MOVESENSE_ECG_STREAM_ID:
+        timestamps_ms = parse_ecg_sample_timestamps_ms(payload, sampling_rate_hz)
+        values_mv = parse_ecg_sample_values_mv(payload)
+        packet_timestamp_ms = int(struct.unpack_from("<I", payload, 2)[0])
+        rows = []
+        for index, (timestamp_ms, value_mv) in enumerate(zip(timestamps_ms, values_mv)):
+            rows.append(
+                {
+                    "address": address or "",
+                    "sensor_id": sensor_id,
+                    "stream": "ecg",
+                    "timestamp_ms": timestamp_ms,
+                    "gateway_timestamp_us": gateway_timestamp_us,
+                    "packet_timestamp_ms": packet_timestamp_ms,
+                    "sample_index": index,
+                    "sampling_rate_hz": sampling_rate_hz,
+                    "value": value_mv,
+                    "unit": "mV",
+                }
+            )
+        return rows
+
+    if stream_id == MOVESENSE_HR_STREAM_ID:
+        hr_value = parse_hr_value(payload)
+        if hr_value is None:
+            return []
+        return [
+            {
+                "address": address or "",
+                "sensor_id": sensor_id,
+                "stream": "hr",
+                "timestamp_ms": int(gateway_timestamp_us / 1000),
+                "gateway_timestamp_us": gateway_timestamp_us,
+                "packet_timestamp_ms": "",
+                "sample_index": 0,
+                "sampling_rate_hz": "",
+                "value": hr_value,
+                "unit": "bpm",
+            }
+        ]
+
+    if stream_id == MOVESENSE_TEMP_STREAM_ID:
+        temp_value = parse_temp_value(payload)
+        if temp_value is None:
+            return []
+        return [
+            {
+                "address": address or "",
+                "sensor_id": sensor_id,
+                "stream": "temp",
+                "timestamp_ms": int(gateway_timestamp_us / 1000),
+                "gateway_timestamp_us": gateway_timestamp_us,
+                "packet_timestamp_ms": "",
+                "sample_index": 0,
+                "sampling_rate_hz": "",
+                "value": temp_value,
+                "unit": "C",
+            }
+        ]
+
+    return []
 
 
 def build_subscribe_command(stream_id: int, path: str) -> str:
