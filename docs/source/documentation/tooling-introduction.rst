@@ -11,12 +11,16 @@ Repository Layout
 - ``NexusBLESdk`` contains the shared host-side transport and monitoring code.
 - ``MovellaDot`` contains the Movella DOT client and sample CLI.
 - ``NexusN3Dot`` contains the Nexus N3 Dot client and sample CLI.
+- ``Movesense`` contains the Movesense client and sample CLI.
+- ``MetaWear`` contains the MetaWear acceleration client and sample CLI.
 
 Repository paths:
 
 - `NexusBLESdk/ <https://github.com/Nexus-N3/rs-nexus-ble-tooling/tree/main/NexusBLESdk>`_
 - `MovellaDot/ <https://github.com/Nexus-N3/rs-nexus-ble-tooling/tree/main/MovellaDot>`_
 - `NexusN3Dot/ <https://github.com/Nexus-N3/rs-nexus-ble-tooling/tree/main/NexusN3Dot>`_
+- `Movesense/ <https://github.com/Nexus-N3/rs-nexus-ble-tooling/tree/main/Movesense>`_
+- `MetaWear/ <https://github.com/Nexus-N3/rs-nexus-ble-tooling/tree/main/MetaWear>`_
 
 Design Intent
 -------------
@@ -47,3 +51,5 @@ Supported Customer Entry Points
 - ``MovellaDot/stream_client.py`` for Movella DOT streaming validation
 - ``NexusN3Dot/stream_client.py`` for Nexus N3 Dot streaming validation
 - ``NexusBLESdk`` for custom host software built on the same gateway protocol
+- ``MetaWear/stream_client.py`` for MetaWear acceleration streaming validation
+- ``Movesense/stream_client.py`` for Movesense streaming validation

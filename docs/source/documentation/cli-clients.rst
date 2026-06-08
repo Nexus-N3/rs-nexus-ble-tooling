@@ -1,9 +1,10 @@
 CLI Clients
 ===========
 
-The repository includes two customer-facing sample clients built on the shared SDK.
+The repository includes customer-facing sample clients built on the shared SDK.
 
 Public repository root: `Nexus-N3/rs-nexus-ble-tooling <https://github.com/Nexus-N3/rs-nexus-ble-tooling>`_.
+
 
 Movella DOT Client
 ------------------
@@ -61,3 +62,63 @@ Programmatic API:
 - ``NexusN3Dot.NexusN3DotClient.stop_streams()``
 - ``NexusN3Dot.NexusN3DotClient.read_device_status_all()``
 - ``NexusN3Dot.NexusN3DotClient.disconnect_all()``
+
+Movesense Client
+-----------------   
+
+``Movesense/stream_client.py`` provides a Movesense workflow with the shared gateway 
+transport and Movesense-specific command UUIDs, discovery filters, and configuration sequences.  
+
+Public source links:    
+- `Movesense/stream_client.py <https://github.com/Nexus-N3/rs-nexus-ble-tooling/blob/main/Movesense/stream_client.py>`_         
+- `Movesense/client.py <https://github.com/Nexus-N3/rs-nexus-ble-tooling/blob/main/Movesense/client.py>`_           
+
+Primary options:
+- ``--port`` to select the gateway serial device
+- ``--sensor-count`` to choose how many sensors to connect but limited to 1 for ECG capture
+- ``--scan-timeout-ms`` to control discovery duration
+- ``--sampling-rate-hz`` to select a supported Movesense output data rate
+- ``--stream-seconds`` to control capture duration
+- ``--use-startup-gate`` or ``--no-startup-gate`` to control startup validation     
+
+Programmatic API:
+- ``Movesense.MovesenseClient.discover()``
+- ``Movesense.MovesenseClient.connect()``           
+- ``Movesense.MovesenseClient.configure()``
+- ``Movesense.MovesenseClient.start_streams()``
+- ``Movesense.MovesenseClient.stop_streams()``
+- ``Movesense.MovesenseClient.read_device_status_all()``
+- ``Movesense.MovesenseClient.disconnect_all()``
+
+
+MetaWear Client
+---------------
+
+``MetaWear/stream_client.py`` provides the first-pass MetaWear acceleration
+workflow. It uses the shared gateway transport, MetaWear-specific command UUIDs,
+and gateway arrival timestamps for stream timing because live MetaWear accel
+notifications do not embed a sensor-side timestamp.
+
+Public source links:
+
+- `MetaWear/stream_client.py <https://github.com/Nexus-N3/rs-nexus-ble-tooling/blob/main/MetaWear/stream_client.py>`_
+- `MetaWear/client.py <https://github.com/Nexus-N3/rs-nexus-ble-tooling/blob/main/MetaWear/client.py>`_
+
+Primary options:
+
+- ``--port`` to select the gateway serial device
+- ``--sensor-count`` to choose how many sensors to connect
+- ``--scan-timeout-ms`` to control discovery duration
+- ``--sampling-rate-hz`` for the current supported MetaWear acceleration rate
+- ``--stream-seconds`` to control capture duration
+- ``--use-startup-gate`` or ``--no-startup-gate`` to control startup validation
+- ``--dump-raw-file`` to capture raw forwarded MetaWear frames for inspection
+
+Programmatic API:
+
+- ``MetaWear.MetaWearClient.discover()``
+- ``MetaWear.MetaWearClient.connect()``
+- ``MetaWear.MetaWearClient.configure()``
+- ``MetaWear.MetaWearClient.start_streams()``
+- ``MetaWear.MetaWearClient.stop_streams()``
+- ``MetaWear.MetaWearClient.disconnect_all()``
