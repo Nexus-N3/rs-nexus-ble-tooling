@@ -21,7 +21,12 @@ from Capture.workflow import CaptureCancelled, CaptureConfig, run_capture_sessio
 
 
 def _sensor_choices() -> list[str]:
-    return sorted(SENSOR_SPECS)
+    return [
+        "movelladot",
+        "nexusn3dot",
+        "movesense",
+        "metawear",
+    ]
 
 
 @contextmanager
