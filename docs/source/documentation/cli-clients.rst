@@ -6,6 +6,32 @@ The repository includes customer-facing sample clients built on the shared SDK.
 Public repository root: `Nexus-N3/rs-nexus-ble-tooling <https://github.com/Nexus-N3/rs-nexus-ble-tooling>`_.
 
 
+Capture Client
+--------------
+
+``Capture/cli.py`` provides the operator-facing capture session workflow across the supported sensor families.
+
+Primary behavior:
+
+- choose a supported sensor family
+- choose the sensor count
+- assign one location per connected sensor
+- optionally use guided identify for Movella DOT placement
+- start and stop the capture manually
+- type ``quit`` at any interactive setup prompt, or press ``Ctrl+C``, to cancel and disconnect connected sensors
+- write a dedicated session directory with manifest and output files under ``output-files/captures/``
+
+Primary options:
+
+- ``--sensor-type`` to choose ``movelladot``, ``nexusn3dot``, ``movesense``, or ``metawear``
+- ``--sensor-count`` to choose how many sensors to connect
+- ``--tag`` to label the capture session
+- ``--location`` to predefine locations non-interactively
+- ``--identify`` to enable guided identify for supported sensors
+- ``--sampling-rate-hz`` to override the family default
+- ``--duration-seconds`` to stop automatically instead of waiting for manual stop
+
+
 Movella DOT Client
 ------------------
 
