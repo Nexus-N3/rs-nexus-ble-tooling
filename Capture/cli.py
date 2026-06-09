@@ -75,7 +75,15 @@ def build_parser():
     parser.add_argument("--tag")
     parser.add_argument("--location", action="append", default=[])
     parser.add_argument("--identify", action="store_true")
-    parser.add_argument("--port", default=DEFAULT_PORT)
+    parser.add_argument(
+        "--port",
+        default=DEFAULT_PORT,
+        help=(
+            "Gateway serial port path or alias. "
+            "Examples: nexus_n3_gw, nordic_dev, auto, "
+            "/dev/serial/by-id/usb-ZEPHYR_IFMCU_CMSIS-DAP_..."
+        ),
+    )
     parser.add_argument("--scan-timeout-ms", type=int, default=5000)
     parser.add_argument("--connect-timeout-s", type=float, default=30.0)
     parser.add_argument("--subscribe-timeout-s", type=float, default=10.0)
