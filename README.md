@@ -7,6 +7,9 @@ The layout is split into two parts:
 - `NexusBLESdk/`: shared serial transport, command handling, stream monitoring, startup-gate logic, and generic stream statistics
 - `MovellaDot/`: the Movella DOT sample client built on top of `NexusBLESdk`
 - `NexusN3Dot/`: the Nexus N3 Dot sample client built on top of `NexusBLESdk`
+- `Movesense/`: the Movesense sample client built on top of `NexusBLESdk`
+- `MetaWear/`: the MetaWear sample client built on top of `NexusBLESdk`
+- `RFSurvey/`: RF Survey host-side clients for targeted BLE signal survey workflows
 
 Additional sensor integrations can be added beside `MovellaDot/` using the same structure.
 
@@ -28,6 +31,7 @@ nexus-n3 MovellaDot/stream_client --sensor-count 1 --stream-seconds 10
 nexus-n3 NexusN3Dot/stream_client --sensor-count 1 --stream-seconds 10
 nexus-n3 Movesense/stream_client --sensor-count 1 --stream-seconds 10
 nexus-n3 MetaWear/stream_client --sensor-count 1 --stream-seconds 10
+nexus-n3-rf-survey-mixed --movella-count 2 --movesense-count 1 --window-ms 3000 --duration-ms 15000
 nexus-n3 capture --sensor-type movelladot --sensor-count 2 --tag walk_trial
 ```
 
@@ -38,6 +42,7 @@ nexus-n3-movella-dot --sensor-count 1 --stream-seconds 10
 nexus-n3-nexus-n3-dot --sensor-count 1 --stream-seconds 10
 nexus-n3-movesense --sensor-count 1 --stream-seconds 10
 nexus-n3-metawear --sensor-count 1 --stream-seconds 10
+nexus-n3-rf-survey-mixed --movella-count 2 --movesense-count 1 --window-ms 3000 --duration-ms 15000
 nexus-n3-capture --sensor-type movelladot --sensor-count 2 --tag walk_trial
 ```
 
@@ -65,6 +70,24 @@ Example:
 - `python Capture/cli.py --sensor-type movelladot --sensor-count 2 --tag walk_trial`
 - type `quit` at any interactive prompt, or press `Ctrl+C`, to cancel the workflow; if sensors are already connected, the client disconnects them before exiting
 
+## RF Survey Clients
+
+The repository also includes RF Survey clients under `RFSurvey/`.
+
+- `RFSurvey/client.py`
+  Single-target smoke-test RF Survey client. This is useful for validating the RF Survey command flow against one selected device.
+
+- `RFSurvey/mixed_client.py`
+  Mixed-target RF Survey client. This client selects a combined target set across the supported sensor families and prints:
+  - rolling-window score and quality per target
+  - the final per-target report returned by `rf_survey_stop()`
+
+Example:
+
+```bash
+python -m RFSurvey.mixed_client --movella-count 2 --movesense-count 1 --window-ms 3000 --duration-ms 15000
+```
+
 ## Directory Layout
 
 - `NexusBLESdk/`
@@ -75,6 +98,15 @@ Example:
 
 - `NexusN3Dot/`
   The Nexus N3 Dot integration. This directory contains Nexus N3 Dot-specific constants, payload parsing, sensor operations, and a runnable `stream_client.py` example.
+
+- `Movesense/`
+  The Movesense integration. This directory contains Movesense-specific constants, payload parsing, sensor operations, and a runnable `stream_client.py` example.
+
+- `MetaWear/`
+  The MetaWear integration. This directory contains MetaWear-specific constants, payload parsing, sensor operations, and a runnable `stream_client.py` example.
+
+- `RFSurvey/`
+  RF Survey clients built on top of the shared gateway SDK. This directory contains the single-target smoke-test client and the mixed-sensor RF Survey client.
 
 - `Capture/`
   The operator-facing capture workflow. This directory contains the shared capture session CLI, sensor adapter layer, and manifest/session helpers.
@@ -89,6 +121,8 @@ To start with the supported samples:
 - see [NexusN3Dot/README.md](NexusN3Dot/README.md)
 - run `nexus-n3 NexusN3Dot/stream_client --sensor-count 1 --stream-seconds 10` after installing the package, or `python NexusN3Dot/stream_client.py --sensor-count 1 --stream-seconds 10` from a source checkout
 - run `nexus-n3 Movesense/stream_client --sensor-count 1 --stream-seconds 10` after installing the package, or `python Movesense/stream_client.py --sensor-count 1 --stream-seconds 10` from a source checkout
+- run `nexus-n3 MetaWear/stream_client --sensor-count 1 --stream-seconds 10` after installing the package, or `python MetaWear/stream_client.py --sensor-count 1 --stream-seconds 10` from a source checkout
+- run `nexus-n3-rf-survey-mixed --movella-count 2 --movesense-count 1 --window-ms 3000 --duration-ms 15000` after installing the package, or `python -m RFSurvey.mixed_client --movella-count 2 --movesense-count 1 --window-ms 3000 --duration-ms 15000` from a source checkout
 
 ## Design Intent
 

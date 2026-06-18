@@ -6,6 +6,38 @@ The repository includes customer-facing sample clients built on the shared SDK.
 Public repository root: `Nexus-N3/rs-nexus-ble-tooling <https://github.com/Nexus-N3/rs-nexus-ble-tooling>`_.
 
 
+RF Survey Clients
+-----------------
+
+``RFSurvey/client.py`` and ``RFSurvey/mixed_client.py`` provide RF Survey workflows on top of the shared gateway SDK.
+
+Primary behavior:
+
+- start RF Survey against selected BLE target addresses
+- poll RF Survey status during the configured rolling window
+- report per-target score and quality during the survey
+- stop RF Survey and print the final per-target summary returned by ``rf_survey_stop()``
+
+``RFSurvey/client.py`` is the single-target smoke-test path.
+
+``RFSurvey/mixed_client.py`` is the mixed-sensor path. It performs one scan, selects a combined target set across the supported sensor families, and starts RF Survey on that merged list.
+
+Primary options for ``RFSurvey/mixed_client.py``:
+
+- ``--movella-count`` to select how many Movella DOT sensors to include
+- ``--movesense-count`` to select how many Movesense sensors to include
+- ``--metawear-count`` to select how many MetaWear sensors to include
+- ``--nexus-n3-dot-count`` to select how many Nexus N3 Dot sensors to include
+- ``--scan-timeout-ms`` to control discovery duration
+- ``--window-ms`` to control the RF Survey rolling window
+- ``--duration-ms`` to control the RF Survey duration
+- ``--poll-interval-s`` to control status polling cadence
+
+Example:
+
+- ``python -m RFSurvey.mixed_client --movella-count 2 --movesense-count 1 --window-ms 3000 --duration-ms 15000``
+
+
 Capture Client
 --------------
 
