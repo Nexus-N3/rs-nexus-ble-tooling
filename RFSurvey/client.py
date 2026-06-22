@@ -108,6 +108,8 @@ def main() -> None:
         if args.address:
             selected = [args.address]
         else:
+
+            # defaults to Movella DOT.
             print(
                 f"Scanning for 1 Movella DOT "
                 f"name={MOVELLA_NAME!r} for {args.scan_timeout_ms} ms..."
