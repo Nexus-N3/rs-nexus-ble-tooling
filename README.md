@@ -75,12 +75,14 @@ Example:
 The repository also includes RF Survey clients under `RFSurvey/`.
 
 - `RFSurvey/client.py`
-  Single-target smoke-test RF Survey client. This is useful for validating the RF Survey command flow against one selected device.
+  Single-target smoke-test RF Survey client. This is useful for validating the RF Survey command flow against one selected device. The client performs discovery once, starts the survey, listens for pushed per-window status, then requests the final summary with `rf_survey_stop()`.
 
 - `RFSurvey/mixed_client.py`
   Mixed-target RF Survey client. This client selects a combined target set across the supported sensor families and prints:
   - pushed per-window score, quality, trend, and RSSI summary per target
   - the final per-target report returned by `rf_survey_stop()`
+
+During the survey itself, the gateway continues using duplicate advertisements internally for RF scoring, but the host only receives RF Survey messages. Normal `scan_result` and `scan_complete` discovery messages are only used during the initial target-selection phase.
 
 Example:
 

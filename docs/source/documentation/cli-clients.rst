@@ -13,10 +13,13 @@ RF Survey Clients
 
 Primary behavior:
 
-- start RF Survey against selected BLE target addresses
+- discover and select RF Survey target addresses before the survey starts
+- start RF Survey against the selected BLE target addresses
 - listen for pushed ``rf_survey_status`` window updates from the gateway
 - report per-target score, quality, trend, and RSSI during the survey
 - stop RF Survey and print the final per-target summary returned by ``rf_survey_stop()``
+
+During the survey phase, the gateway still uses duplicate advertisements internally so RF Survey can compute observations, RSSI statistics, scores, and trends. Those repeated advertisements are not forwarded to the host as normal ``scan_result`` discovery JSON; the host only receives RF Survey status and final summary messages once the survey is running.
 
 ``RFSurvey/client.py`` is the single-target smoke-test path.
 
@@ -35,6 +38,7 @@ Primary options for ``RFSurvey/mixed_client.py``:
 Example:
 
 - ``python -m RFSurvey.mixed_client --movella-count 2 --movesense-count 1 --window-ms 3000 --duration-ms 15000``
+- ``python -m RFSurvey.client --window-ms 5000 --duration-ms 20000``
 
 
 Capture Client
