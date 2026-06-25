@@ -47,7 +47,7 @@ class GatewayClient:
                 "client": self.client_name,
             }
         )
-        self.wait_for_request(request_id, "hello_ack", timeout_s=5.0)
+        return self.wait_for_request(request_id, "hello_ack", timeout_s=5.0)
 
     def reset_session(self, timeout_s: float = 5.0):
         request_id = self.request_id("reset")
