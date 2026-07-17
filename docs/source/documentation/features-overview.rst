@@ -8,7 +8,7 @@ Current High-Level Features
 
 - Multi-sensor BLE gateway control for scanning, connecting, subscribing, reading, writing, disconnecting, and status collection.
 - Shared ``NexusBLESdk`` host API for serial transport, request/response handling, mixed JSON and binary parsing, and monitoring.
-- Connected streaming workflows for supported sensors including Movella DOT, Nexus N3 Dot, Movesense, and MetaWear.
+- Connected streaming workflows for supported sensors including Movella DOT, Nexus N3 Dot, Nexus N3 HDR Dot, Movesense, and MetaWear.
 - High-rate binary notification forwarding for supported sensor streams, alongside human-readable JSON control commands.
 - RF Survey workflows for single-target and mixed-sensor signal-quality mapping.
 - Operator-facing capture workflow for supported sensor families with session manifests and output-file organization.

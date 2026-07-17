@@ -139,6 +139,36 @@ Programmatic API:
 - ``NexusN3Dot.NexusN3DotClient.read_device_status_all()``
 - ``NexusN3Dot.NexusN3DotClient.disconnect_all()``
 
+Nexus N3 HDR Dot Client
+-----------------------
+
+``NexusN3HDRDot/stream_client.py`` follows the same overall lifecycle, with HDR Dot-specific UUIDs, stream-mode selection, fixed 2048 Hz sensor output, and post-run device-status reads.
+
+Public source links:
+
+- `NexusN3HDRDot/stream_client.py <https://github.com/Nexus-N3/rs-nexus-ble-tooling/blob/main/NexusN3HDRDot/stream_client.py>`_
+- `NexusN3HDRDot/client.py <https://github.com/Nexus-N3/rs-nexus-ble-tooling/blob/main/NexusN3HDRDot/client.py>`_
+
+Primary options:
+
+- ``--port`` to select the gateway serial device
+- ``--sensor-count`` to choose how many sensors to connect
+- ``--scan-timeout-ms`` to control discovery duration
+- ``--stream-mode`` to select ``MAG``, ``X``, ``Y``, ``Z``, ``XYZ``, or ``ALL``
+- ``--stream-seconds`` to control capture duration
+- ``--use-startup-gate`` or ``--no-startup-gate`` to control startup validation
+- ``--write-to-file`` to save parsed HDR samples under ``output-files/``
+
+Programmatic API:
+
+- ``NexusN3HDRDot.NexusN3HDRDotClient.discover()``
+- ``NexusN3HDRDot.NexusN3HDRDotClient.connect()``
+- ``NexusN3HDRDot.NexusN3HDRDotClient.configure()``
+- ``NexusN3HDRDot.NexusN3HDRDotClient.start_streams()``
+- ``NexusN3HDRDot.NexusN3HDRDotClient.stop_streams()``
+- ``NexusN3HDRDot.NexusN3HDRDotClient.read_device_status_all()``
+- ``NexusN3HDRDot.NexusN3HDRDotClient.disconnect_all()``
+
 Movesense Client
 -----------------   
 

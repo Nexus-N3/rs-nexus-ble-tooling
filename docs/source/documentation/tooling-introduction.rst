@@ -11,6 +11,7 @@ Repository Layout
 - ``NexusBLESdk`` contains the shared host-side transport and monitoring code.
 - ``MovellaDot`` contains the Movella DOT client and sample CLI.
 - ``NexusN3Dot`` contains the Nexus N3 Dot client and sample CLI.
+- ``NexusN3HDRDot`` contains the Nexus N3 HDR Dot client and sample CLI.
 - ``Movesense`` contains the Movesense client and sample CLI.
 - ``MetaWear`` contains the MetaWear acceleration client and sample CLI.
 - ``RFSurvey`` contains RF Survey clients for single-target, mixed-sensor, and marking survey workflows.
@@ -20,6 +21,7 @@ Repository paths:
 - `NexusBLESdk/ <https://github.com/Nexus-N3/rs-nexus-ble-tooling/tree/main/NexusBLESdk>`_
 - `MovellaDot/ <https://github.com/Nexus-N3/rs-nexus-ble-tooling/tree/main/MovellaDot>`_
 - `NexusN3Dot/ <https://github.com/Nexus-N3/rs-nexus-ble-tooling/tree/main/NexusN3Dot>`_
+- `NexusN3HDRDot/ <https://github.com/Nexus-N3/rs-nexus-ble-tooling/tree/main/NexusN3HDRDot>`_
 - `Movesense/ <https://github.com/Nexus-N3/rs-nexus-ble-tooling/tree/main/Movesense>`_
 - `MetaWear/ <https://github.com/Nexus-N3/rs-nexus-ble-tooling/tree/main/MetaWear>`_
 - `RFSurvey/ <https://github.com/Nexus-N3/rs-nexus-ble-tooling/tree/main/RFSurvey>`_
@@ -53,6 +55,7 @@ Supported Customer Entry Points
 
 - ``MovellaDot/stream_client.py`` for Movella DOT streaming validation
 - ``NexusN3Dot/stream_client.py`` for Nexus N3 Dot streaming validation
+- ``NexusN3HDRDot/stream_client.py`` for Nexus N3 HDR Dot streaming validation
 - ``NexusBLESdk`` for custom host software built on the same gateway protocol
 - ``MetaWear/stream_client.py`` for MetaWear acceleration streaming validation
 - ``Movesense/stream_client.py`` for Movesense streaming validation

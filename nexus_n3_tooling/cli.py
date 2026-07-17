@@ -17,6 +17,10 @@ CLIENT_MODULES: dict[str, str] = {
     "NexusN3Dot.stream_client": "NexusN3Dot.stream_client",
     "nexusn3dot": "NexusN3Dot.stream_client",
     "nexus-n3-dot": "NexusN3Dot.stream_client",
+    "NexusN3HDRDot/stream_client": "NexusN3HDRDot.stream_client",
+    "NexusN3HDRDot.stream_client": "NexusN3HDRDot.stream_client",
+    "nexusn3hdrdot": "NexusN3HDRDot.stream_client",
+    "nexus-n3-hdr-dot": "NexusN3HDRDot.stream_client",
     "Movesense/stream_client": "Movesense.stream_client",
     "Movesense.stream_client": "Movesense.stream_client",
     "movesense": "Movesense.stream_client",
@@ -42,6 +46,7 @@ def _client_list() -> str:
     canonical = [
         "MovellaDot/stream_client",
         "NexusN3Dot/stream_client",
+        "NexusN3HDRDot/stream_client",
         "Movesense/stream_client",
         "MetaWear/stream_client",
         "RFSurvey/client",
@@ -61,6 +66,7 @@ def build_parser() -> argparse.ArgumentParser:
             "Examples:\n"
             "  nexus-n3 MovellaDot/stream_client --sensor-count 1 --stream-seconds 10\n"
             "  nexus-n3 NexusN3Dot/stream_client --sensor-count 1 --stream-seconds 10\n"
+            "  nexus-n3 NexusN3HDRDot/stream_client --sensor-count 1 --stream-mode MAG --stream-seconds 10\n"
             "  nexus-n3 Movesense/stream_client --sensor-count 1 --stream-seconds 10\n"
             "  nexus-n3 rf-survey --window-ms 5000 --duration-ms 20000\n"
             "  nexus-n3 rf-survey-mark --movella-count 2 --window-ms 3000 --duration-ms 15000\n"

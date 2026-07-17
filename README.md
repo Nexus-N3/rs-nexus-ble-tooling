@@ -7,6 +7,7 @@ The layout is split into two parts:
 - `NexusBLESdk/`: shared serial transport, command handling, stream monitoring, startup-gate logic, and generic stream statistics
 - `MovellaDot/`: the Movella DOT sample client built on top of `NexusBLESdk`
 - `NexusN3Dot/`: the Nexus N3 Dot sample client built on top of `NexusBLESdk`
+- `NexusN3HDRDot/`: the Nexus N3 HDR Dot sample client built on top of `NexusBLESdk`
 - `Movesense/`: the Movesense sample client built on top of `NexusBLESdk`
 - `MetaWear/`: the MetaWear sample client built on top of `NexusBLESdk`
 - `RFSurvey/`: RF Survey host-side clients for targeted BLE signal survey workflows
@@ -19,12 +20,12 @@ Additional sensor integrations can be added beside `MovellaDot/` using the same 
 Once this package is published to PyPI, users can install the BLE tooling with:
 
 ```bash
-pip install nexus-n3-tooling
+pip install nexus-n3-ble-tooling
 ```
 
 A first test release is available via
 ```bash
-pip install -i https://test.pypi.org/simple/ nexus-n3-tooling
+pip install -i https://test.pypi.org/simple/ nexus-n3-ble-tooling
 ```
 
 The install exposes a `nexus-n3` command that can run the main clients by module-style name or by the shorter aliases shown below. Arguments after the client name are passed through to that client.
@@ -34,6 +35,7 @@ Examples:
 ```bash
 nexus-n3 MovellaDot/stream_client --sensor-count 1 --stream-seconds 10
 nexus-n3 NexusN3Dot/stream_client --sensor-count 1 --stream-seconds 10
+nexus-n3 NexusN3HDRDot/stream_client --sensor-count 1 --stream-mode MAG --stream-seconds 10
 nexus-n3 Movesense/stream_client --sensor-count 1 --stream-seconds 10
 nexus-n3 MetaWear/stream_client --sensor-count 1 --stream-seconds 10
 nexus-n3 rf-survey --window-ms 5000 --duration-ms 20000
@@ -47,6 +49,7 @@ Dedicated console scripts are also installed:
 ```bash
 nexus-n3-movella-dot --sensor-count 1 --stream-seconds 10
 nexus-n3-nexus-n3-dot --sensor-count 1 --stream-seconds 10
+nexus-n3-nexus-n3-hdr-dot --sensor-count 1 --stream-mode MAG --stream-seconds 10
 nexus-n3-movesense --sensor-count 1 --stream-seconds 10
 nexus-n3-metawear --sensor-count 1 --stream-seconds 10
 nexus-n3-rf-survey --window-ms 5000 --duration-ms 20000
@@ -115,6 +118,9 @@ python -m RFSurvey.mark_client --movella-count 2 --window-ms 3000 --duration-ms 
 - `NexusN3Dot/`
   The Nexus N3 Dot integration. This directory contains Nexus N3 Dot-specific constants, payload parsing, sensor operations, and a runnable `stream_client.py` example.
 
+- `NexusN3HDRDot/`
+  The Nexus N3 HDR Dot integration. This directory contains HDR Dot-specific constants, stream-mode handling, payload parsing, sensor operations, and a runnable `stream_client.py` example.
+
 - `Movesense/`
   The Movesense integration. This directory contains Movesense-specific constants, payload parsing, sensor operations, and a runnable `stream_client.py` example.
 
@@ -136,6 +142,8 @@ To start with the supported samples:
 - run `nexus-n3 MovellaDot/stream_client --sensor-count 1 --stream-seconds 10` after installing the package, or `python MovellaDot/stream_client.py --sensor-count 1 --stream-seconds 10` from a source checkout
 - see [NexusN3Dot/README.md](NexusN3Dot/README.md)
 - run `nexus-n3 NexusN3Dot/stream_client --sensor-count 1 --stream-seconds 10` after installing the package, or `python NexusN3Dot/stream_client.py --sensor-count 1 --stream-seconds 10` from a source checkout
+- see [NexusN3HDRDot/README.md](NexusN3HDRDot/README.md)
+- run `nexus-n3 NexusN3HDRDot/stream_client --sensor-count 1 --stream-mode MAG --stream-seconds 10` after installing the package, or `python NexusN3HDRDot/stream_client.py --sensor-count 1 --stream-mode MAG --stream-seconds 10` from a source checkout
 - run `nexus-n3 Movesense/stream_client --sensor-count 1 --stream-seconds 10` after installing the package, or `python Movesense/stream_client.py --sensor-count 1 --stream-seconds 10` from a source checkout
 - run `nexus-n3 MetaWear/stream_client --sensor-count 1 --stream-seconds 10` after installing the package, or `python MetaWear/stream_client.py --sensor-count 1 --stream-seconds 10` from a source checkout
 - run `nexus-n3 rf-survey --window-ms 5000 --duration-ms 20000` after installing the package, or `python -m RFSurvey.client --window-ms 5000 --duration-ms 20000` from a source checkout
